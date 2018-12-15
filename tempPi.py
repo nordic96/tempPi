@@ -9,10 +9,14 @@ import MySQLdb
 
 
 LED = 7 #pin 7
+GREEN = 11
+RED = 13
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BOARD)
 GPIO.setup(LED, GPIO.OUT)
 GPIO.output(LED, GPIO.LOW)
+GPIO.setup(GREEN, GPIO.OUT)
+GPIO.setup(RED, GPIO.OUT)
 
 address = 0x48
 A0 = 0x40
@@ -23,14 +27,21 @@ bus = smbus.SMBus(1)
 record = 0.0
 f = open('temprec.txt', 'a')
 db = MySQLdb.connect("localhost", "root", "nordic96", "test")
+
 while True:
     cursor = db.cursor()
-
     GPIO.output(LED, GPIO.HIGH)
-    time.sleep(0.5)
+    time.sleep(0.1)
     bus.write_byte(address, A0)
     value = bus.read_byte(address)
-    temp = (float)(value) * 33/255
+    temp = (float)(value) * 330/255
+    if temp >= 31:
+        GPIO.output(RED, GPIO.HIGH)
+        GPIO.output(GREEN, GPIO.LOW)
+    else:
+        GPIO.output(RED, GPIO.LOW)
+        GPIO.output(GREEN, GPIO.HIGH)
+
     if record == temp:
         continue
     else:
@@ -46,7 +57,7 @@ while True:
         print record
         f.write(record + '\n')
         GPIO.output(LED, GPIO.LOW)
-        time.sleep(1.5)
+        time.sleep(600)
     record = temp
 db.close()
 f.close()
