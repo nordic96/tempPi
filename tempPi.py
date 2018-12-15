@@ -7,13 +7,14 @@ from datetime import datetime
 from datetime import timedelta
 import RPi.GPIO as GPIO
 import MySQLdb
+import lcd_16x2 as LCD
 
 
-LED = 7 #pin 7
-GREEN = 11
-RED = 13
+LED = 4 #pin 7/GPIO 4
+GREEN = 17
+RED = 27
 GPIO.setwarnings(False)
-GPIO.setmode(GPIO.BOARD)
+GPIO.setmode(GPIO.BCM)
 GPIO.setup(LED, GPIO.OUT)
 GPIO.output(LED, GPIO.LOW)
 GPIO.setup(GREEN, GPIO.OUT)
@@ -29,6 +30,9 @@ record = 0.0
 f = open('temprec.txt', 'a')
 db = MySQLdb.connect("localhost", "root", "nordic96", "test")
 start = datetime.now()
+
+#init lcd screen
+LCD.lcd_init()
 
 def tempcheck(temp):
     if temp >= 31:
@@ -62,6 +66,7 @@ while True:
             db.commit()
             start = now
         record = str(now) + ' Temp: %3.3f' %temp
+        LCD.lcd_string('Temp: %3.3f' %temp, 1)
         print record
         f.write(record + '\n')
         GPIO.output(LED, GPIO.LOW)
