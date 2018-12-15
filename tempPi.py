@@ -3,7 +3,8 @@
 import smbus
 import time
 import math
-import datetime
+from datetime import datetime
+from datetime import timedelta
 import RPi.GPIO as GPIO
 import MySQLdb
 
@@ -27,6 +28,15 @@ bus = smbus.SMBus(1)
 record = 0.0
 f = open('temprec.txt', 'a')
 db = MySQLdb.connect("localhost", "root", "nordic96", "test")
+start = datetime.now()
+
+def tempcheck(temp):
+    if temp >= 31:
+        GPIO.output(RED, GPIO.HIGH)
+        GPIO.output(GREEN, GPIO.LOW)
+    else:
+        GPIO.output(RED, GPIO.LOW)
+        GPIO.output(GREEN, GPIO.HIGH)
 
 while True:
     cursor = db.cursor()
@@ -35,29 +45,27 @@ while True:
     bus.write_byte(address, A0)
     value = bus.read_byte(address)
     temp = (float)(value) * 330/255
-    if temp >= 31:
-        GPIO.output(RED, GPIO.HIGH)
-        GPIO.output(GREEN, GPIO.LOW)
-    else:
-        GPIO.output(RED, GPIO.LOW)
-        GPIO.output(GREEN, GPIO.HIGH)
+    tempcheck(temp)
 
     if record == temp:
         continue
     else:
-        now = datetime.datetime.now()
-        #mysql insertion
-        sql = "insert into TempRecord(date, temp) values( %s, %s)"
-        try:
-            cursor.execute(sql, (now.strftime('%Y-%m-%d %H:%M:%S'), temp))
-        except:
-            db.rollback()
-        db.commit()
+        now = datetime.now()
+        if now >= start + timedelta(minutes=10):
+            #mysql insertion
+            sql = "insert into TempRecord(date, temp) values( %s, %s)"
+            try:
+                cursor.execute(sql, (now.strftime('%Y-%m-%d %H:%M:%S'), temp))
+                print '*db inserted@', now, ' temp val:', temp, '*'
+            except:
+                db.rollback()
+            db.commit()
+            start = now
         record = str(now) + ' Temp: %3.3f' %temp
         print record
         f.write(record + '\n')
         GPIO.output(LED, GPIO.LOW)
-        time.sleep(600)
+        time.sleep(2)
     record = temp
 db.close()
 f.close()
