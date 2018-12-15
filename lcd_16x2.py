@@ -43,7 +43,7 @@ def lcd_init():
     lcd_byte(0x0C, LCD_CMD)
     lcd_byte(0x28, LCD_CMD)
     lcd_byte(0x01, LCD_CMD)
-    time.sleep(E_DELAY)
+    time.sleep(0.0005)
 
 def lcd_byte(bits, mode):
     GPIO.output(LCD_RS, mode)
@@ -97,3 +97,10 @@ def lcd_string(message, lineNo):
     for i in range(LCD_WIDTH):
         lcd_byte(ord(message[i]), LCD_CHR)
 
+if __name__=='__main__':
+    try:
+        main()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        GPIO.cleanup()
