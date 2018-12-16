@@ -8,6 +8,9 @@ from datetime import timedelta
 import RPi.GPIO as GPIO
 import MySQLdb
 import lcd_16x2 as LCD
+import buzzer
+
+start = datetime.now()
 
 def tempcheck(temp):
     if temp >= 31:
@@ -16,6 +19,25 @@ def tempcheck(temp):
     else:
         GPIO.output(RED, GPIO.LOW)
         GPIO.output(GREEN, GPIO.HIGH)
+
+def dbInsertValidate(now, startTime, timegap):
+    if now >= startTime + timedelta(seconds=timegap):
+        #mysql insertion
+        sql = "insert into TempRecord(rec_year, rec_month, rec_date, rec_time, temp) values(%s, %s, %s, %s, %s)"
+        # print sql %(now.year, now.month, now.day, now.strftime('%H:%M:%S'), temp)
+        try:
+            cursor.execute(sql, (int(now.year), int(now.month), int(now.day), now.strftime('%H:%M:%S'), temp))
+            LCD.lcd_string('**db inserted**', 2)
+            print '**temp value inserted**'
+            buzzer.buzz(1)
+        except:
+            LCD.lcd_string('**db error!**', 2)
+            time.sleep(2)
+            db.rollback()
+        db.commit()
+        global start
+        start = now
+
 
 if __name__=='__main__':
     LED = 4 #pin 7/GPIO 4
@@ -37,7 +59,6 @@ if __name__=='__main__':
     record = 0.0
     #f = open('temprec.txt', 'a')
     db = MySQLdb.connect("localhost", "root", "nordic96", "test")
-    start = datetime.now()
 
     #init lcd screen
     LCD.lcd_init()
@@ -56,21 +77,14 @@ if __name__=='__main__':
             if record == temp:
                 continue
             else:
+                buzzer.buzz(0.1)
                 now = datetime.now()
-                if now >= start + timedelta(minutes=10):
-                    #mysql insertion
-                    sql = "insert into TempRecord(date, temp) values( %s, %s)"
-                    try:
-                        cursor.execute(sql, (now.strftime('%Y-%m-%d %H:%M:%S'), temp))
-                        print '*db inserted@', now, ' temp val:', temp, '*'
-                        LCD.lcd_string('**db inserted**', 2)
-                    except:
-                        db.rollback()
-                    db.commit()
-                    start = now
+
+                dbInsertValidate(now, start, 10)
+
                 record = str(now) + ' Temp: %3.3f' %temp
                 LCD.lcd_string('Temp: %3.2f C' %temp, 1)
-                LCD.lcd_string(now.strftime('%H:%M:%S'), 2)
+                LCD.lcd_string('Time: %s' %now.strftime('%H:%M:%S'), 2)
                 print record
                 GPIO.output(LED, GPIO.LOW)
                 time.sleep(2)
